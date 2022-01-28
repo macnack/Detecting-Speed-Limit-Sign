@@ -10,7 +10,7 @@ import os
 anno_test_path = "./test/annotations/road4.xml"
 anno_test_path1 = "./test/annotations/road2.xml"
 img_test_path = "./test/images/"
-path = "./test/annotations/"
+path = "./train/annotations/"
 anno_train_path = "./train/annotations/"
 img_train_path = "./train/images/"
 
@@ -57,4 +57,27 @@ def make_frame( path ):
     return pd.DataFrame(items)
 
 df_train = make_frame(path)
-print(df_train.sort_values(by='filename'))
+#print( len((df_train.loc[df_train['class'] == 'speedlimit' ]['filename']).value_counts()) )
+#print( len((df_train.loc[df_train['class'] == 'speedlimit' ]['filename'])) )
+#print( df_train['filename'].value_counts().values)
+#print(len((df_train['filename'].value_counts().axes).value))
+
+
+# for filename in (df_train['filename'].value_counts().axes):
+#      for x in filename.values:
+#           print(x)
+#      print(len(filename.values))
+# for y in df_train['filename'].value_counts():
+#     print(y)
+# print( df_train['filename'].value_counts() )
+img_speedlimit = df_train.loc[df_train['class'] == 'speedlimit']
+xy = ( img_speedlimit['filename'].value_counts().keys().tolist(),  img_speedlimit['filename'].value_counts().tolist() )
+# for ax in range(len(xy[0])):
+#     print( xy[0][ax] )
+#     print( xy[1][ax] )
+# print(sum(xy[1])*0.2)
+
+for ax in range(78):
+    print( xy[0][ax] )
+    print( xy[1][ax] )
+#print(df_train.value_counts())
