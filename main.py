@@ -92,7 +92,7 @@ def learn_bovw(frame):
     my_bow = cv2.BOWKMeansTrainer(dict_size)
 
     sift = cv2.SIFT_create()
-    for _,row in frame.iterrows():
+    for _, row in frame.iterrows():
         img = cv2.imread(os.path.join(img_train_path, row[0]), cv2.IMREAD_COLOR)
         img = img[row[5]:row[7], row[4]:row[6]]
         grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -103,7 +103,8 @@ def learn_bovw(frame):
     my_vocabulary = my_bow.cluster()
     np.save('my_voc.npy', my_vocabulary)
 
-def extract_features(frame , path):
+
+def extract_features(frame, path):
     sift = cv2.SIFT_create()
     flannBasedMatcher = cv2.FlannBasedMatcher_create()
     my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
@@ -114,7 +115,7 @@ def extract_features(frame , path):
         path = img_train_path
     else:
         path = img_test_path
-    for _,row in frame.iterrows():
+    for _, row in frame.iterrows():
         img = cv2.imread(os.path.join(path, row[0]), cv2.IMREAD_COLOR)
         # img = img[row[5]:row[7], row[4]:row[6]]
         grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -123,6 +124,7 @@ def extract_features(frame , path):
         imageDescriptors.append(imageDescriptor)
     frame['desc'] = imageDescriptors
     return frame
+
 
 def train(frame):
     clf = AdaBoostClassifier(n_estimators=100, random_state=0)
@@ -134,10 +136,11 @@ def train(frame):
         if descriptors[n_desc] is not None:
             x_matrix = np.vstack((x_matrix, descriptors[n_desc]))
             y_vec.append(labels[n_desc])
-    clf.fit(x_matrix[1:],y_vec)
+    clf.fit(x_matrix[1:], y_vec)
     return clf
 
-def predict( rf, frame ):
+
+def predict(rf, frame):
     class_predict = []
     descriptors = frame['desc'].to_numpy()
     for desc in descriptors:
@@ -148,13 +151,14 @@ def predict( rf, frame ):
     frame['class_pred'] = class_predict
     return frame
 
+
 def evaluate(frame):
     y_pred = frame['class_pred'].to_list()
     y_real = frame['class'].to_list()
     confusion = confusion_matrix(y_real, y_pred)
     tn, fp, fn, tp = confusion.ravel()
     print(confusion)
-    accuracy = 100 * (tp + tn ) / ( tp + tn + fp + fn )
+    accuracy = 100 * (tp + tn) / (tp + tn + fp + fn)
     print("accuracy =", round(accuracy, 2), "%")
     return
 
@@ -164,9 +168,9 @@ data_frame_train = make_frame(anno_train_path)
 print(data_frame_train['class'].value_counts())
 class_change(data_frame_train)
 print("Read test file")
-# data_frame_test = make_frame(anno_test_path)
-# print(data_frame_test['class'].value_counts())
-# class_change(data_frame_test)
+data_frame_test = make_frame(anno_test_path)
+# # print(data_frame_test['class'].value_counts())
+class_change(data_frame_test)
 print("learn bovw")
 learn_bovw(data_frame_train)
 print("extract features")
@@ -178,112 +182,41 @@ rf = train(data_frame_train)
 print("predict")
 # data_frame_test = predict(rf, data_frame_test)
 
-#evaluate( data_frame_test )
-if 1:
+# evaluate( data_frame_test )
+if 0:
     data_frame_train = predict(rf, data_frame_train)
-    evaluate( data_frame_train )
-#print(data_frame_test[['filename','class','class_pred']].tail(100))
-# images = []
-# images1 =[]
-# images2 =[]
-# for _, row in data_frame_train.tail(25).iterrows():
-#     img = cv2.imread(os.path.join(img_train_path, row[0]), cv2.IMREAD_COLOR)
-#     img = img[row[5]:row[7], row[4]:row[6]]
-#     images1.append(cv2.imread(os.path.join(img_train_path, row[0]), cv2.IMREAD_COLOR)[row[5]:row[7], row[4]:row[6]])
-#     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#     blur = cv2.GaussianBlur(gray, (5, 5), 0)
-#     _, th3 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-#     th2 = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_MEAN_C,
-#                     cv2.THRESH_BINARY,3,5)
-#     kernel = np.ones((5,5),np.uint8)
-#     erosion = cv2.erode(th2,kernel,iterations=1)
-#     imgray=cv2.Canny(erosion,30,100)
-#     can=cv2.Canny(img,100,200)
-#     # circles = cv2.HoughCircles(can, cv2.HOUGH_GRADIENT, 1, 30,
-#     #                            param1=100,param2=20,minRadius=10,maxRadius=40)
-#     circles = cv2.HoughCircles(can, cv2.HOUGH_GRADIENT, 1, 100,
-#                                param1=100,param2=20,minRadius=10,maxRadius=100)
-#     if circles is not None:
-#         circles = np.uint16(np.around(circles))
-#         for i in circles[0, :]:
-#             # draw the outer circle
-#             cv2.circle(img, (i[0], i[1]), i[2], (0, 255, 0), 2)
-#             #cv2.rectangle(img, (i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]), (0, 255, 0), 2)
-#             # draw the center of the circle
-#             cv2.circle(img, (i[0], i[1]), 2, (0, 0, 255), 3)
-#     # sift = cv2.SIFT_create()
-#     # kpts = sift.detect(gray, None)
-#     # images.append(cv2.drawKeypoints(gray, kpts, img))
-#     images2.append(img)
-# # for x in range(5):
-# #     plt.figure(0)
-# #     plt.subplot(5, 5, x * 5 + 1)
-# #     plt.imshow(images[x * 5])
-# #     plt.subplot(5, 5, x * 5 + 2)
-# #     plt.imshow(images[x * 5 + 1])
-# #     plt.subplot(5, 5, x * 5 + 3)
-# #     plt.imshow(images[x * 5 + 2])
-# #     plt.subplot(5, 5, x * 5 + 4)
-# #     plt.imshow(images[x * 5 + 3])
-# #     plt.subplot(5, 5, x * 5 + 5)
-# #     plt.imshow(images[x * 5 + 4])
-# # for x in range(5):
-# #     plt.figure(1)
-# #     plt.subplot(5, 5, x * 5 + 1)
-# #     plt.imshow(images1[x * 5])
-# #     plt.subplot(5, 5, x * 5 + 2)
-# #     plt.imshow(images1[x * 5 + 1])
-# #     plt.subplot(5, 5, x * 5 + 3)
-# #     plt.imshow(images1[x * 5 + 2])
-# #     plt.subplot(5, 5, x * 5 + 4)
-# #     plt.imshow(images1[x * 5 + 3])
-# #     plt.subplot(5, 5, x * 5 + 5)
-# #     plt.imshow(images1[x * 5 + 4])
+    evaluate(data_frame_train)
+# print(data_frame_test[['filename','class','class_pred']].tail(100))
+images = []
+images1 = []
+images2 = []
+for _, row in data_frame_test.iloc[5:6].iterrows():
+    img = cv2.imread(os.path.join(img_test_path, row[0]), cv2.IMREAD_COLOR)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (7, 7), 1.5)
+    circles = cv2.HoughCircles(blur, cv2.HOUGH_GRADIENT_ALT, 1.5, 10,
+                               param1=300, param2=0.85, minRadius=1, maxRadius=100)
+
+    if circles is not None:
+        boxes = []
+        circles = np.uint16(np.around(circles))
+        for i in circles[0, :]:
+            box = ((i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]))
+            boxes.append(box)
+            # draw the outer circle
+            #cv2.rectangle(img, (i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]), (255, 0, 0), 2)
+            ## Is this speedlimit??
+            # sift = cv2.SIFT_create()
+            # flannBasedMatcher = cv2.FlannBasedMatcher_create()
+            # my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
+            # my_vocabulary = np.load('my_voc.npy')
+            # my_bow.setVocabulary(my_vocabulary)
+            #img = cv2.imread(os.path.join(path, row[0]), cv2.IMREAD_COLOR)
+
+    print(boxes)
+    images.append(img)
 # for x in range(5):
-#     plt.figure(1)
-#     plt.subplot(5, 5, x * 5 + 1)
-#     plt.imshow(images2[x * 5])
-#     plt.subplot(5, 5, x * 5 + 2)
-#     plt.imshow(images2[x * 5 + 1])
-#     plt.subplot(5, 5, x * 5 + 3)
-#     plt.imshow(images2[x * 5 + 2])
-#     plt.subplot(5, 5, x * 5 + 4)
-#     plt.imshow(images2[x * 5 + 3])
-#     plt.subplot(5, 5, x * 5 + 5)
-#     plt.imshow(images2[x * 5 + 4])
-# images = []
-# for _, row in data_frame_train.tail(25).iterrows():
-#     img = cv2.imread(os.path.join(img_train_path, row[0]), cv2.IMREAD_COLOR)
-#     # img = img[row[5]:row[7], row[4]:row[6]]
-#     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#     blur = cv2.GaussianBlur(gray, (5, 5), 0)
-#     _, th3 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-#     th2 = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_MEAN_C,
-#                     cv2.THRESH_BINARY,3,5)
-#     kernel = np.ones((5,5),np.uint8)
-#     erosion = cv2.erode(th2,kernel,iterations=1)
-#     imgray=cv2.Canny(erosion,100,50)
-#     can=cv2.Canny(gray,100,200)
-#     # circles = cv2.HoughCircles(th3, cv2.HOUGH_GRADIENT, 1, 30,
-#     #                             param1=100, param2=20, minRadius=1, maxRadius=100)
-#     # #circles = cv2.HoughCircles(imgray, cv2.HOUGH_GRADIENT, 1, 50,
-#     # #                           param1=100,param2=20,minRadius=10,maxRadius=60)
-#     circles = cv2.HoughCircles(can, cv2.HOUGH_GRADIENT, 1, 50,
-#                                param1=100,param2=50,minRadius=10,maxRadius=100)
-#     if circles is not None:
-#         circles = np.uint16(np.around(circles))
-#         for i in circles[0, :]:
-#             # draw the outer circle
-#             cv2.circle(img, (i[0], i[1]), i[2], (0, 255, 0), 2)
-#             #cv2.rectangle(img, (i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]), (0, 255, 0), 2)
-#             # draw the center of the circle
-#             cv2.circle(img, (i[0], i[1]), 2, (0, 0, 255), 3)
-#     # sift = cv2.SIFT_create()
-#     # kpts = sift.detect(th3, None)
-#     # img = cv2.drawKeypoints(th3, kpts, img)
-#     images.append(can)
-# for x in range(5):
-#     plt.figure(2)
+#     plt.figure(0)
 #     plt.subplot(5, 5, x * 5 + 1)
 #     plt.imshow(images[x * 5])
 #     plt.subplot(5, 5, x * 5 + 2)
@@ -294,6 +227,22 @@ if 1:
 #     plt.imshow(images[x * 5 + 3])
 #     plt.subplot(5, 5, x * 5 + 5)
 #     plt.imshow(images[x * 5 + 4])
-# print(data_frame_train.head(25))
-#
-# plt.show()
+plt.figure(0)
+box = boxes[1]
+img = img[box[0][1]:box[1][1], box[0][0]:box[1][0]]
+plt.imshow(img)
+
+sift = cv2.SIFT_create()
+flannBasedMatcher = cv2.FlannBasedMatcher_create()
+my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
+my_vocabulary = np.load('my_voc.npy')
+my_bow.setVocabulary(my_vocabulary)
+grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+kpts = sift.detect(grayscale, None)
+imageDescriptor = my_bow.compute(grayscale, kpts)
+img=cv2.drawKeypoints(grayscale,kpts,img)
+plt.figure(1)
+plt.imshow(img)
+print("predict")
+print(rf.predict(imageDescriptor))
+plt.show()
