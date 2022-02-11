@@ -3,6 +3,7 @@ import random
 import numpy as np
 import cv2
 from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 import pandas as pd
 import xml.etree.ElementTree as ET
@@ -11,8 +12,7 @@ import os
 from matplotlib import pyplot as plt
 import random
 
-
-#file paths
+# file paths
 anno_test_path = "./test/annotations/"
 img_test_path = "./test/images/"
 
@@ -64,10 +64,33 @@ def make_frame(path):
                                   'heigh': heigh_, 'class': class_,
                                   'xmin': int(xmin_), 'ymin': int(ymin_),
                                   'xmax': int(xmax_), 'ymax': int(ymax_)})
-                    # break turn off repetition
+                    # break if turn off repetition
     return pd.DataFrame(items)
 
-#classification other and speedlimit (0, 1)
+
+def make_input_frame(path):
+    items = []
+    for entry in os.listdir(path):
+        file_path = os.path.join(path, entry)
+        if os.path.isfile(file_path):
+            if '.xml' in file_path:
+                test = ET.parse(file_path).getroot()
+                for name in test.findall("./object"):
+                    filename_ = test.find("./filename").text
+                    width_ = test.find("./size/width").text
+                    heigh_ = test.find("./size/height").text
+                    class_ = name.find("./name").text
+                    xmin_ = name.find("./bndbox/xmin").text
+                    ymin_ = name.find("./bndbox/ymin").text
+                    xmax_ = name.find("./bndbox/xmax").text
+                    ymax_ = name.find("./bndbox/ymax").text
+                    items.append({'filename': filename_, 'bounds': ((int(xmin_), int(xmax_)),
+                                                                    (int(ymin_), int(ymax_))), 'class': class_})
+                    # break if turn off repetition
+    return pd.DataFrame(items)
+
+
+# classification other and speedlimit (0, 1)
 def class_change(frame):
     class_new_dict = {'trafficlight': 0, 'speedlimit': 1, 'stop': 0, 'crosswalk': 0}
     frame['class'] = frame['class'].apply(lambda x: class_new_dict[x])
@@ -87,6 +110,7 @@ def fill_train_data(frame):  # only with no repetition
             Path(xml_path).rename(Path(os.path.join(anno_test_path, item.__add__('.xml'))))
     return 1
 
+
 # learn bovw
 def learn_bovw(frame):
     dict_size = 128
@@ -101,45 +125,44 @@ def learn_bovw(frame):
         if descriptor is not None:
             my_bow.add(descriptor)
     my_vocabulary = my_bow.cluster()
-    np.save('my_voc.npy', my_vocabulary) # vocabulary
+    np.save('my_voc.npy', my_vocabulary)  # vocabulary
 
 
 def extract_features(frame, path):
     sift = cv2.SIFT_create()
-    flannBasedMatcher = cv2.FlannBasedMatcher_create()
-    my_bow = cv2.BOWImgDescriptorExtractor(cv2.SIFT_create(), cv2.FlannBasedMatcher_create())
+    my_bow = cv2.BOWImgDescriptorExtractor(sift, cv2.FlannBasedMatcher_create())
     my_vocabulary = np.load('my_voc.npy')
     my_bow.setVocabulary(my_vocabulary)
     imageDescriptors = []
+    flag = False
     if path == 'train':
         path = img_train_path
+    elif path == 'terminal':
+        path = img_test_path
+        flag = True
     else:
         path = img_test_path
 
     for _, row in frame.iterrows():
         img = cv2.imread(os.path.join(path, row[0]), cv2.IMREAD_COLOR)
         grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        if path == 'terminal':
-            bounds = row[1] # ( (xmin, xmax), (ymin, ymax) )
-            for box in bounds:
-                xmin = box[0][0]
-                xmax = box[0][1]
-                ymin = box[1][0]
-                ymax = box[1][1]
-                grayscale = grayscale[ymin:ymax, xmin:xmax]
-                kpts = sift.detect(grayscale, None)
-                imageDescriptor_ = my_bow.compute(grayscale, kpts)
-                imageDescriptor.append(imageDescriptor_)
-        else:
-            kpts = sift.detect(grayscale, None)
-            imageDescriptor = my_bow.compute(grayscale, kpts)
-            imageDescriptors.append(imageDescriptor)
+        # blur = cv2.GaussianBlur(grayscale, (7, 7), 1.5)
+        # grayscale=cv2.Canny(blur,50,100)
+        if flag == False:
+            grayscale = grayscale[row[5]:row[7], row[4]:row[6]]
+        if flag:
+            ((xmin, xmax), (ymin, ymax)) = row[1]  # ( (xmin, xmax), (ymin, ymax) )
+            grayscale = grayscale[ymin:ymax, xmin:xmax]
+        kpts = sift.detect(grayscale, None)
+        imageDescriptor = my_bow.compute(grayscale, kpts)
+        imageDescriptors.append(imageDescriptor)
     frame['desc'] = imageDescriptors
     return frame
 
 
 def train(frame):
-    clf = AdaBoostClassifier(n_estimators=100, random_state=0)
+    # clf = AdaBoostClassifier(n_estimators=100, random_state=0)
+    clf = RandomForestClassifier()
     descriptors = frame['desc'].to_numpy()
     labels = frame['class'].to_list()
     x_matrix = np.empty((1, 128))
@@ -182,94 +205,130 @@ def output(filename, n_objects, bounds):
         for bound in bounds:
             print(bound[0][0], ' ', bound[1][0], ' ', bound[0][1], ' ', bound[1][1])
     return
-#method classify from terminal
+
+
+# method classify from terminal
 def input_classify():
-    to_do_list = {}
+    to_do_list = []
     loop = input('number of files: ')
     for x in range(int(loop)):
         filename = input('filename: ')
         number_of_objects = input('number of objects: ')
-        bounds_box = []
         for y in range(int(number_of_objects)):
             bounds = list(map(int, input('bounds').split()))
-            bounds_box.append(((bounds[0], bounds[2]), (bounds[1], bounds[3])))
-        to_do_list.update({filename : bounds_box})
-    return to_do_list
-def classify( to_do_list ):
-    for items in classify:
-            filename = items[0] #road.png
-            bounds = items[1] # ( (xmin, xmax), (ymin, ymax) )
-            for box in bounds:
-                xmin = box[0][0]
-                xmax = box[0][1]
-                ymin = box[1][0]
-                ymax = box[1][1]
-            img = cv2.imread(os.path.join(img_test_path, filename), cv2.IMREAD_COLOR)
+            tuple_ = ((bounds[0], bounds[2]), (bounds[1], bounds[3]))
+            to_do_list.append({'filename': str(filename), 'bounds': tuple_})
+    return pd.DataFrame(to_do_list)
 
-
-def main():
-    print("Read train file")
-    data_frame_train = make_frame(anno_train_path)
-    print(data_frame_train['class'].value_counts())
-    class_change(data_frame_train)
-    print("Read test file")
-    data_frame_test = make_frame(anno_test_path)
-    print(data_frame_test['class'].value_counts())
-    class_change(data_frame_test)
-    print("learn bovw")
-    learn_bovw(data_frame_train)
-    print("extract features")
-    data_frame_train = extract_features(data_frame_train, 'train')
-    print("train")
-    rf = train(data_frame_train)
-
-# data_frame_test = extract_features( data_frame_test, 'test' )
-print("predict")
-# data_frame_test = predict(rf, data_frame_test)
-
-# evaluate( data_frame_test )
-if 0:
-    data_frame_train = predict(rf, data_frame_train)
-    evaluate(data_frame_train)
-# print(data_frame_test[['filename','class','class_pred']].tail(100))
-images = []
-
-data_frame_test = make_frame(anno_test_path)
-# for _, row in data_frame_test.iloc[75:100].iterrows():
 
 def detect(frame):
     filename = 'road.png'
-    for _, row in data_frame_test.iloc[54:79].iterrows():
+    for _, row in frame.iterrows():
         img = cv2.imread(os.path.join(img_test_path, row[0]), cv2.IMREAD_COLOR)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (7, 7), 1.5)
         circles = cv2.HoughCircles(blur, cv2.HOUGH_GRADIENT_ALT, 1.5, 10,
                                    param1=300, param2=0.85, minRadius=1, maxRadius=100)
-
         if filename is not row[0]:
             filename = row[0]
             if circles is not None:
                 boxes = []
-                circles = np.uint16(np.around(circles))
                 count = 0
                 for i in circles[0, :]:
-                    box = ((i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]))
+                    xmin = np.uint16(np.around(max(i[0] - i[2], 0)))
+                    ymin = np.uint16(np.around(max(i[1] - i[2], 0)))
+                    xmax = np.uint16(np.around(i[0] + i[2]))
+                    ymax = np.uint16(np.around(i[1] + i[2]))
+                    box = ((xmin, ymin), (xmax, ymax))
                     boxes.append(box)
                     # draw the outer circle
-                    cv2.rectangle(img, (i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]), (255, 0, 0), 2)
+                    if False:
+                        cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
                     ## Is this speedlimit ?? detection
                     sift = cv2.SIFT_create()
                     flannBasedMatcher = cv2.FlannBasedMatcher_create()
                     my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
                     my_vocabulary = np.load('my_voc.npy')
                     my_bow.setVocabulary(my_vocabulary)
-                    img_gray_part = gray[box[0][1]:box[1][1], box[0][0]:box[1][0]]
-                    kpts = sift.detect(img_gray_part, None)
-                    imageDescriptor = my_bow.compute(img_gray_part, kpts)
+                    img_gray_part = gray[ymin:ymax, xmin:xmax]
+                    imageDescriptor = my_bow.compute(img_gray_part, sift.detect(img_gray_part, None))
                     if imageDescriptor is not None:
                         count += 1
             output(filename, count, boxes)
     return 1
+
+
+def output_predict(frame):
+    class_predict = frame['class_pred']
+    for item in class_predict:
+        if item == 1:
+            print('speedlimit')
+        else:
+            print('other')
+    return 1
+
+
+def classify(rf):
+    classify = [{'filename': 'road192.png', 'bounds': ((133, 205), (223, 300))},
+                {'filename': 'road545.png', 'bounds': ((77, 198), (122, 241))},
+                {'filename': 'road545.png', 'bounds': ((140, 245), (209, 314))},
+                {'filename': 'road545.png', 'bounds': ((56, 315), (100, 359))},
+                {'filename': 'road259.png', 'bounds': ((139, 65), (214, 138))},
+                {'filename': 'road161.png',
+                 'bounds': ((178, 50), (230, 102))}]  # {'filename': 'road832.png', 'bounds': ((74, 42), (196, 161))},
+    classify = make_input_frame(anno_test_path)
+    classify_frame = pd.DataFrame(classify)
+    class_change(classify_frame)
+    # classify_frame = input_classify()
+    classify_frame = extract_features(classify_frame, 'terminal')
+    classify_frame = predict(rf, classify_frame)
+    output_predict(classify_frame)
+    return 1
+
+
+def main():
+    # print("Read train file")
+    data_frame_train = make_frame(anno_train_path)
+    # print(data_frame_train['class'].value_counts())
+    class_change(data_frame_train)
+    # print("Read test file")
+    data_frame_test = make_frame(anno_test_path)
+    # print(data_frame_test['class'].value_counts())
+    class_change(data_frame_test)
+    # print("learn bovw")
+    learn_bovw(data_frame_train)
+    # print("extract features")
+    data_frame_train = extract_features(data_frame_train, 'train')
+    # print("train")
+    rf = train(data_frame_train)
+    print("predict")
+    data_frame_test = extract_features(data_frame_test, 'test')
+    data_frame_test = predict(rf, data_frame_test)
+    # evaluate(data_frame_test)
+    if input("detect or classify ( repeat ) ") == 'classify':
+        classify(rf)
+    else:
+        detect(data_frame_test.iloc[75:100])
+    # classify = make_input_frame(anno_test_path)
+    # print(classify)
+    # for _, row in classify.iterrows():
+    #     print(row[1])
+    #     ((x,xx),(y,yy)) = row[1]
+    #     print(x,xx,y,yy)
+
+
+# data_frame_test = extract_features( data_frame_test, 'test' )
+# data_frame_test = predict(rf, data_frame_test)
+
+if 0:
+    data_frame_train = predict(rf, data_frame_train)
+    evaluate(data_frame_train)
+
+
+# print(data_frame_test[['filename','class','class_pred']].tail(100))
+# for _, row in data_frame_test.iloc[75:100].iterrows():
+
+
 def plot(images):
     for x in range(5):
         plt.figure(0)
@@ -285,10 +344,12 @@ def plot(images):
         plt.imshow(images[x * 5 + 4])
     plt.show()
 
-print("predict")
-classify = [('road210.png', [((179, 199), (135, 156)), ((110, 130), (22, 44))]) , ('road209.png', [((93, 172), (144, 231))])]
-classify_frame = pd.DataFrame(classify)
-print(classify_frame)
-extract_features(classify_frame, 'terminal')
-print(classify_frame)
-#detect(data_frame_test.iloc[54:79].iterrows())
+
+main()
+
+# detect(data_frame_test.iloc[54:79].iterrows())
+# img = cv2.imread(os.path.join(img_test_path, 'road210.png'), cv2.IMREAD_COLOR)
+# img = img[135: 156, 179: 199]
+# plt.figure(1)
+# plt.imshow(img)
+# plt.show()
