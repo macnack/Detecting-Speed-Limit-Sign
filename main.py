@@ -184,20 +184,21 @@ def classify():
         to_do_list.update({filename : bounds_box})
     return to_do_list
 
-print("Read train file")
-data_frame_train = make_frame(anno_train_path)
-print(data_frame_train['class'].value_counts())
-class_change(data_frame_train)
-print("Read test file")
-data_frame_test = make_frame(anno_test_path)
-print(data_frame_test['class'].value_counts())
-class_change(data_frame_test)
-print("learn bovw")
-learn_bovw(data_frame_train)
-print("extract features")
-data_frame_train = extract_features(data_frame_train, 'train')
-print("train")
-rf = train(data_frame_train)
+def main():
+    print("Read train file")
+    data_frame_train = make_frame(anno_train_path)
+    print(data_frame_train['class'].value_counts())
+    class_change(data_frame_train)
+    print("Read test file")
+    data_frame_test = make_frame(anno_test_path)
+    print(data_frame_test['class'].value_counts())
+    class_change(data_frame_test)
+    print("learn bovw")
+    learn_bovw(data_frame_train)
+    print("extract features")
+    data_frame_train = extract_features(data_frame_train, 'train')
+    print("train")
+    rf = train(data_frame_train)
 
 # data_frame_test = extract_features( data_frame_test, 'test' )
 print("predict")
@@ -210,66 +211,56 @@ if 0:
 # print(data_frame_test[['filename','class','class_pred']].tail(100))
 images = []
 
-
+data_frame_test = make_frame(anno_test_path)
 # for _, row in data_frame_test.iloc[75:100].iterrows():
+filename = 'road.png'
 for _, row in data_frame_test.iloc[54:79].iterrows():
     img = cv2.imread(os.path.join(img_test_path, row[0]), cv2.IMREAD_COLOR)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (7, 7), 1.5)
     circles = cv2.HoughCircles(blur, cv2.HOUGH_GRADIENT_ALT, 1.5, 10,
                                param1=300, param2=0.85, minRadius=1, maxRadius=100)
-    print("Name: ", row[0])
-    if circles is not None:
-        boxes = []
-        circles = np.uint16(np.around(circles))
-        count = 0
-        for i in circles[0, :]:
-            box = ((i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]))
-            boxes.append(box)
-            # draw the outer circle
-            cv2.rectangle(img, (i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]), (255, 0, 0), 2)
-            ## Is this speedlimit ?? detection
-            sift = cv2.SIFT_create()
-            flannBasedMatcher = cv2.FlannBasedMatcher_create()
-            my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
-            my_vocabulary = np.load('my_voc.npy')
-            my_bow.setVocabulary(my_vocabulary)
-            img_gray_part = gray[box[0][1]:box[1][1], box[0][0]:box[1][0]]
-            kpts = sift.detect(img_gray_part, None)
-            imageDescriptor = my_bow.compute(img_gray_part, kpts)
-            if imageDescriptor is not None:
-                count += 1
+    #print("Name: ", row[0])
+
+    if filename is not row[0]:
+        filename = row[0]
+        if circles is not None:
+            boxes = []
+            circles = np.uint16(np.around(circles))
+            count = 0
+            for i in circles[0, :]:
+                box = ((i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]))
+                boxes.append(box)
+                # draw the outer circle
+                cv2.rectangle(img, (i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]), (255, 0, 0), 2)
+                ## Is this speedlimit ?? detection
+                sift = cv2.SIFT_create()
+                flannBasedMatcher = cv2.FlannBasedMatcher_create()
+                my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
+                my_vocabulary = np.load('my_voc.npy')
+                my_bow.setVocabulary(my_vocabulary)
+                img_gray_part = gray[box[0][1]:box[1][1], box[0][0]:box[1][0]]
+                kpts = sift.detect(img_gray_part, None)
+                imageDescriptor = my_bow.compute(img_gray_part, kpts)
+                if imageDescriptor is not None:
+                    count += 1
+        output(filename, count, boxes)
 
     images.append(img)
-for x in range(5):
-    plt.figure(0)
-    plt.subplot(5, 5, x * 5 + 1)
-    plt.imshow(images[x * 5])
-    plt.subplot(5, 5, x * 5 + 2)
-    plt.imshow(images[x * 5 + 1])
-    plt.subplot(5, 5, x * 5 + 3)
-    plt.imshow(images[x * 5 + 2])
-    plt.subplot(5, 5, x * 5 + 4)
-    plt.imshow(images[x * 5 + 3])
-    plt.subplot(5, 5, x * 5 + 5)
-    plt.imshow(images[x * 5 + 4])
-plt.figure(1)
-box = boxes[1]
-img = cv2.imread("wies_pl.jpeg", cv2.IMREAD_COLOR)
-img = img[box[0][1]:box[1][1], box[0][0]:box[1][0]]
-plt.imshow(img)
+def plot():
+    for x in range(5):
+        plt.figure(0)
+        plt.subplot(5, 5, x * 5 + 1)
+        plt.imshow(images[x * 5])
+        plt.subplot(5, 5, x * 5 + 2)
+        plt.imshow(images[x * 5 + 1])
+        plt.subplot(5, 5, x * 5 + 3)
+        plt.imshow(images[x * 5 + 2])
+        plt.subplot(5, 5, x * 5 + 4)
+        plt.imshow(images[x * 5 + 3])
+        plt.subplot(5, 5, x * 5 + 5)
+        plt.imshow(images[x * 5 + 4])
+    plt.figure(1)
+    box = boxes[1]
 
-sift = cv2.SIFT_create()
-flannBasedMatcher = cv2.FlannBasedMatcher_create()
-my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
-my_vocabulary = np.load('my_voc.npy')
-my_bow.setVocabulary(my_vocabulary)
-grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-kpts = sift.detect(grayscale, None)
-imageDescriptor = my_bow.compute(grayscale, kpts)
-img = cv2.drawKeypoints(grayscale, kpts, img)
-plt.figure(2)
-plt.imshow(img)
 print("predict")
-print(rf.predict(imageDescriptor))
-plt.show()
