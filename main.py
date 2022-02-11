@@ -115,13 +115,25 @@ def extract_features(frame, path):
         path = img_train_path
     else:
         path = img_test_path
+
     for _, row in frame.iterrows():
         img = cv2.imread(os.path.join(path, row[0]), cv2.IMREAD_COLOR)
-        # img = img[row[5]:row[7], row[4]:row[6]]
         grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        kpts = sift.detect(grayscale, None)
-        imageDescriptor = my_bow.compute(grayscale, kpts)
-        imageDescriptors.append(imageDescriptor)
+        if path == 'terminal':
+            bounds = row[1] # ( (xmin, xmax), (ymin, ymax) )
+            for box in bounds:
+                xmin = box[0][0]
+                xmax = box[0][1]
+                ymin = box[1][0]
+                ymax = box[1][1]
+                grayscale = grayscale[ymin:ymax, xmin:xmax]
+                kpts = sift.detect(grayscale, None)
+                imageDescriptor_ = my_bow.compute(grayscale, kpts)
+                imageDescriptor.append(imageDescriptor_)
+        else:
+            kpts = sift.detect(grayscale, None)
+            imageDescriptor = my_bow.compute(grayscale, kpts)
+            imageDescriptors.append(imageDescriptor)
     frame['desc'] = imageDescriptors
     return frame
 
@@ -171,7 +183,7 @@ def output(filename, n_objects, bounds):
             print(bound[0][0], ' ', bound[1][0], ' ', bound[0][1], ' ', bound[1][1])
     return
 #method classify from terminal
-def classify():
+def input_classify():
     to_do_list = {}
     loop = input('number of files: ')
     for x in range(int(loop)):
@@ -183,6 +195,17 @@ def classify():
             bounds_box.append(((bounds[0], bounds[2]), (bounds[1], bounds[3])))
         to_do_list.update({filename : bounds_box})
     return to_do_list
+def classify( to_do_list ):
+    for items in classify:
+            filename = items[0] #road.png
+            bounds = items[1] # ( (xmin, xmax), (ymin, ymax) )
+            for box in bounds:
+                xmin = box[0][0]
+                xmax = box[0][1]
+                ymin = box[1][0]
+                ymax = box[1][1]
+            img = cv2.imread(os.path.join(img_test_path, filename), cv2.IMREAD_COLOR)
+
 
 def main():
     print("Read train file")
@@ -213,41 +236,41 @@ images = []
 
 data_frame_test = make_frame(anno_test_path)
 # for _, row in data_frame_test.iloc[75:100].iterrows():
-filename = 'road.png'
-for _, row in data_frame_test.iloc[54:79].iterrows():
-    img = cv2.imread(os.path.join(img_test_path, row[0]), cv2.IMREAD_COLOR)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (7, 7), 1.5)
-    circles = cv2.HoughCircles(blur, cv2.HOUGH_GRADIENT_ALT, 1.5, 10,
-                               param1=300, param2=0.85, minRadius=1, maxRadius=100)
-    #print("Name: ", row[0])
 
-    if filename is not row[0]:
-        filename = row[0]
-        if circles is not None:
-            boxes = []
-            circles = np.uint16(np.around(circles))
-            count = 0
-            for i in circles[0, :]:
-                box = ((i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]))
-                boxes.append(box)
-                # draw the outer circle
-                cv2.rectangle(img, (i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]), (255, 0, 0), 2)
-                ## Is this speedlimit ?? detection
-                sift = cv2.SIFT_create()
-                flannBasedMatcher = cv2.FlannBasedMatcher_create()
-                my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
-                my_vocabulary = np.load('my_voc.npy')
-                my_bow.setVocabulary(my_vocabulary)
-                img_gray_part = gray[box[0][1]:box[1][1], box[0][0]:box[1][0]]
-                kpts = sift.detect(img_gray_part, None)
-                imageDescriptor = my_bow.compute(img_gray_part, kpts)
-                if imageDescriptor is not None:
-                    count += 1
-        output(filename, count, boxes)
+def detect(frame):
+    filename = 'road.png'
+    for _, row in data_frame_test.iloc[54:79].iterrows():
+        img = cv2.imread(os.path.join(img_test_path, row[0]), cv2.IMREAD_COLOR)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray, (7, 7), 1.5)
+        circles = cv2.HoughCircles(blur, cv2.HOUGH_GRADIENT_ALT, 1.5, 10,
+                                   param1=300, param2=0.85, minRadius=1, maxRadius=100)
 
-    images.append(img)
-def plot():
+        if filename is not row[0]:
+            filename = row[0]
+            if circles is not None:
+                boxes = []
+                circles = np.uint16(np.around(circles))
+                count = 0
+                for i in circles[0, :]:
+                    box = ((i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]))
+                    boxes.append(box)
+                    # draw the outer circle
+                    cv2.rectangle(img, (i[0] - i[2], i[1] - i[2]), (i[0] + i[2], i[1] + i[2]), (255, 0, 0), 2)
+                    ## Is this speedlimit ?? detection
+                    sift = cv2.SIFT_create()
+                    flannBasedMatcher = cv2.FlannBasedMatcher_create()
+                    my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
+                    my_vocabulary = np.load('my_voc.npy')
+                    my_bow.setVocabulary(my_vocabulary)
+                    img_gray_part = gray[box[0][1]:box[1][1], box[0][0]:box[1][0]]
+                    kpts = sift.detect(img_gray_part, None)
+                    imageDescriptor = my_bow.compute(img_gray_part, kpts)
+                    if imageDescriptor is not None:
+                        count += 1
+            output(filename, count, boxes)
+    return 1
+def plot(images):
     for x in range(5):
         plt.figure(0)
         plt.subplot(5, 5, x * 5 + 1)
@@ -260,7 +283,12 @@ def plot():
         plt.imshow(images[x * 5 + 3])
         plt.subplot(5, 5, x * 5 + 5)
         plt.imshow(images[x * 5 + 4])
-    plt.figure(1)
-    box = boxes[1]
+    plt.show()
 
 print("predict")
+classify = [('road210.png', [((179, 199), (135, 156)), ((110, 130), (22, 44))]) , ('road209.png', [((93, 172), (144, 231))])]
+classify_frame = pd.DataFrame(classify)
+print(classify_frame)
+extract_features(classify_frame, 'terminal')
+print(classify_frame)
+#detect(data_frame_test.iloc[54:79].iterrows())
