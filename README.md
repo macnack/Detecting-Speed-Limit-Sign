@@ -16,4 +16,5 @@ W celu lokalizacji znaków skorzystałem z biblioteki **Hough'a**,
 
 ## Linki
 Tutorial [Hough Circle Transform](https://docs.opencv.org/4.x/da/d53/tutorial_py_houghcircles.html).
+
 Tutorial [Non-Maximum Suppression](https://www.pyimagesearch.com/2014/11/17/non-maximum-suppression-object-detection-python/).
