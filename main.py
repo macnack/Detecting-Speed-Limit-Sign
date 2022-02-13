@@ -113,7 +113,7 @@ def learn_bovw(frame):
     my_vocabulary = my_bow.cluster()
     np.save('my_voc.npy', my_vocabulary)  # vocabulary
 
-
+# extraxt deskriptor from frame
 def extract_features(frame, path):
     sift = cv2.SIFT_create()
     my_bow = cv2.BOWImgDescriptorExtractor(sift, cv2.FlannBasedMatcher_create())
@@ -142,7 +142,7 @@ def extract_features(frame, path):
     frame['desc'] = imageDescriptors
     return frame
 
-
+# train model
 def train(frame):
     # clf = AdaBoostClassifier(n_estimators=100, random_state=0)
     clf = RandomForestClassifier()
@@ -157,7 +157,7 @@ def train(frame):
     clf.fit(x_matrix[1:], y_vec)
     return clf
 
-
+# predict value
 def predict(rf, frame):
     class_predict = []
     descriptors = frame['desc'].to_numpy()
@@ -169,7 +169,7 @@ def predict(rf, frame):
     frame['class_pred'] = class_predict
     return frame
 
-
+# compute accuracy
 def evaluate(frame):
     confusion = confusion_matrix(frame['class'].to_list(), frame['class_pred'].to_list())
     tn, fp, fn, tp = confusion.ravel()
@@ -186,7 +186,7 @@ def output(filename, bounds):
             print('(', bound[0][0], ',', bound[0][1], ',', bound[1][0], ',', bound[1][1], ')')
     return
 
-
+# output for frame with bounds
 def output_with_box(frame):
     filename = frame['filename'].to_list()
     bounds = frame['find_bounds'].to_list()
@@ -213,7 +213,7 @@ def input_classify():
             to_do_list.append({'filename': str(filename), 'bounds': tuple_})
     return pd.DataFrame(to_do_list)
 
-
+# NMS algorithm
 def non_max_suppression(x_min, x_max, y_min, y_max):
     choose = []
     area = (x_max - x_min + 1) * (y_max - y_min + 1)
@@ -237,7 +237,7 @@ def non_max_suppression(x_min, x_max, y_min, y_max):
         boxes.append(box)
     return boxes
 
-
+# used for detection
 def extract_and_predict_loc(rf, frame):
     filename = frame['filename'].to_list()
     bounds = frame['find_bounds'].to_list()
@@ -261,7 +261,7 @@ def extract_and_predict_loc(rf, frame):
     frame['class_pred'] = class_predict
     return frame
 
-
+# Hough Tranfrom for localize circle in img
 def localization(frame):
     filename = 'road.png'
     new_frame = []
