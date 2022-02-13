@@ -2,14 +2,14 @@
 ### Maciej Krupka
 
 ## Wymagane biblioteki
--import numpy
--import cv2
--import sklearn
--import pandas
--import xml.etree.ElementTree
--import pathlib 
--import os
--import matplotlib
+- import numpy
+- import cv2
+- import sklearn
+- import pandas
+- import xml.etree.ElementTree
+- import pathlib 
+- import os
+- import matplotlib
 
 ## Lokalizacja znaków
 W celu lokalizacji znaków skorzystałem z biblioteki **Hough'a**, 
