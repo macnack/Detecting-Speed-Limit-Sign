@@ -1,8 +1,5 @@
-import os
-import random
 import numpy as np
 import cv2
-from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 import pandas as pd
@@ -10,13 +7,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 import os
 from matplotlib import pyplot as plt
-import random
 
-## factorial of image
-alpha = 1 / 10
-## nnm threshold
-overlapThresh = 0.3
-
+# from sklearn.ensemble import AdaBoostClassifier
 # file paths
 anno_test_path = "./test/annotations/"
 img_test_path = "./test/images/"
@@ -26,6 +18,15 @@ img_train_path = "./train/images/"
 
 data_xml_path = Path("./dataset/annotations/")
 data_img_path = Path("./dataset/images/")
+
+# factorial of image
+alpha = 1 / 10
+# nnm threshold
+overlapThresh = 0.3
+# images to show
+images = []
+# draw the box
+Draw = False
 
 
 # import from xml file....
@@ -53,7 +54,7 @@ def make_frame(path):
     return pd.DataFrame(items)
 
 
-## to test classify method
+# to test classify method
 def make_input_frame(path):
     items = []
     for entry in os.listdir(path):
@@ -63,8 +64,8 @@ def make_input_frame(path):
                 test = ET.parse(file_path).getroot()
                 for name in test.findall("./object"):
                     filename_ = test.find("./filename").text
-                    width_ = test.find("./size/width").text
-                    heigh_ = test.find("./size/height").text
+                    # width_ = test.find("./size/width").text
+                    # heigh_ = test.find("./size/height").text
                     class_ = name.find("./name").text
                     xmin_ = name.find("./bndbox/xmin").text
                     ymin_ = name.find("./bndbox/ymin").text
@@ -106,8 +107,7 @@ def learn_bovw(frame):
         img = cv2.imread(os.path.join(img_train_path, row[0]), cv2.IMREAD_COLOR)
         img = img[row[5]:row[7], row[4]:row[6]]
         grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        kpts = sift.detect(grayscale, None)
-        kpts, descriptor = sift.compute(grayscale, kpts)
+        _, descriptor = sift.compute(grayscale, sift.detect(grayscale, None))
         if descriptor is not None:
             my_bow.add(descriptor)
     my_vocabulary = my_bow.cluster()
@@ -132,13 +132,12 @@ def extract_features(frame, path):
     for _, row in frame.iterrows():
         img = cv2.imread(os.path.join(path, row[0]), cv2.IMREAD_COLOR)
         grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        if flag == False:
+        if not flag:
             grayscale = grayscale[row[5]:row[7], row[4]:row[6]]
         if flag:
             ((xmin, xmax), (ymin, ymax)) = row[1]  # ( (xmin, xmax), (ymin, ymax) )
             grayscale = grayscale[ymin:ymax, xmin:xmax]
-        kpts = sift.detect(grayscale, None)
-        imageDescriptor = my_bow.compute(grayscale, kpts)
+        imageDescriptor = my_bow.compute(grayscale, sift.detect(grayscale, None))
         imageDescriptors.append(imageDescriptor)
     frame['desc'] = imageDescriptors
     return frame
@@ -172,13 +171,10 @@ def predict(rf, frame):
 
 
 def evaluate(frame):
-    y_pred = frame['class_pred'].to_list()
-    y_real = frame['class'].to_list()
-    confusion = confusion_matrix(y_real, y_pred)
+    confusion = confusion_matrix(frame['class'].to_list(), frame['class_pred'].to_list())
     tn, fp, fn, tp = confusion.ravel()
     print(confusion)
-    accuracy = 100 * (tp + tn) / (tp + tn + fp + fn)
-    print("accuracy =", round(accuracy, 2), "%")
+    print("accuracy =", round(100 * (tp + tn) / (tp + tn + fp + fn), 2), "%")
     return
 
 
@@ -189,6 +185,19 @@ def output(filename, bounds):
         for bound in bounds:
             print('(', bound[0][0], ',', bound[0][1], ',', bound[1][0], ',', bound[1][1], ')')
     return
+
+
+def output_with_box(frame):
+    filename = frame['filename'].to_list()
+    bounds = frame['find_bounds'].to_list()
+    class_pred = frame['class_pred'].to_list()
+    for i in range(len(filename)):
+        print(filename[i])
+        print(sum(class_pred[i]))
+        for j in range(len(class_pred[i])):
+            if class_pred[i][j] == 1:
+                print(bounds[i][j])
+    return 1
 
 
 # method classify from terminal
@@ -228,6 +237,7 @@ def non_max_suppression(x_min, x_max, y_min, y_max):
         boxes.append(box)
     return boxes
 
+
 def extract_and_predict_loc(rf, frame):
     filename = frame['filename'].to_list()
     bounds = frame['find_bounds'].to_list()
@@ -236,8 +246,7 @@ def extract_and_predict_loc(rf, frame):
         img = cv2.imread(os.path.join(img_test_path, filename[i]), cv2.IMREAD_COLOR)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         sift = cv2.SIFT_create()
-        flannBasedMatcher = cv2.FlannBasedMatcher_create()
-        my_bow = cv2.BOWImgDescriptorExtractor(sift, flannBasedMatcher)
+        my_bow = cv2.BOWImgDescriptorExtractor(sift, cv2.FlannBasedMatcher_create())
         my_vocabulary = np.load('my_voc.npy')
         my_bow.setVocabulary(my_vocabulary)
         class_predict_ = []
@@ -247,12 +256,12 @@ def extract_and_predict_loc(rf, frame):
             if imageDescriptor is not None:
                 class_predict_.append(rf.predict(imageDescriptor)[0])
             else:
-                class_predict_.append(None)
+                class_predict_.append(0)
         class_predict.append(class_predict_)
     frame['class_pred'] = class_predict
     return frame
 
-images = []
+
 def localization(frame):
     filename = 'road.png'
     new_frame = []
@@ -264,12 +273,12 @@ def localization(frame):
                                    param1=300, param2=0.85, minRadius=1, maxRadius=100)
         if filename is not row[0]:
             filename = row[0]
+            xmin_ = np.array(0)
+            ymin_ = np.array(0)
+            xmax_ = np.array(0)
+            ymax_ = np.array(0)
             if circles is not None:
                 boxes = []
-                xmin_ = np.array(0)
-                ymin_ = np.array(0)
-                xmax_ = np.array(0)
-                ymax_ = np.array(0)
                 count = 0
                 for i in circles[0, :]:
                     xmin = np.array(np.uint16(np.around(max(i[0] - i[2], 0))))
@@ -285,7 +294,7 @@ def localization(frame):
                         ymin_ = np.vstack((ymin_, ymin))
                         ymax_ = np.vstack((ymax_, ymax))
                     # draw the outer circle
-                    if False:
+                    if Draw:
                         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
                     images.append(img)
             boxes = non_max_suppression(xmin_[1:, 0], xmax_[1:, 0], ymin_[1:, 0], ymax_[1:, 0])
@@ -305,21 +314,43 @@ def output_predict(frame):
 
 
 def classify(rf):
-    classify = [{'filename': 'road192.png', 'bounds': ((133, 205), (223, 300))},
-                {'filename': 'road545.png', 'bounds': ((77, 198), (122, 241))},
-                {'filename': 'road545.png', 'bounds': ((140, 245), (209, 314))},
-                {'filename': 'road545.png', 'bounds': ((56, 315), (100, 359))},
-                {'filename': 'road259.png', 'bounds': ((139, 65), (214, 138))},
-                {'filename': 'road161.png',
-                 'bounds': ((178, 50), (230, 102))}]  # {'filename': 'road832.png', 'bounds': ((74, 42), (196, 161))},
-    classify = make_input_frame(anno_test_path)
-    classify_frame = pd.DataFrame(classify)
-    class_change(classify_frame)
-    # classify_frame = input_classify()
+    # classify = [{'filename': 'road192.png', 'bounds': ((133, 205), (223, 300))},
+    #             {'filename': 'road545.png', 'bounds': ((77, 198), (122, 241))},
+    #             {'filename': 'road545.png', 'bounds': ((140, 245), (209, 314))},
+    #             {'filename': 'road545.png', 'bounds': ((56, 315), (100, 359))},
+    #             {'filename': 'road259.png', 'bounds': ((139, 65), (214, 138))},
+    #             {'filename': 'road161.png',
+    #              'bounds': ((178, 50), (230, 102))}]  # {'filename': 'road832.png', 'bounds': ((74, 42), (196, 161))},
+    # classify = make_input_frame(anno_test_path)
+    # classify_frame = pd.DataFrame(classify)
+    # class_change(classify_frame)
+    classify_frame = input_classify()
     classify_frame = extract_features(classify_frame, 'terminal')
     classify_frame = predict(rf, classify_frame)
     output_predict(classify_frame)
     return 1
+
+
+def detect(rf, frame):
+    located = localization(frame)
+    located = extract_and_predict_loc(rf, located)
+    output_with_box(located)
+
+
+def plot(images_):
+    for x in range(5):
+        plt.figure(0)
+        plt.subplot(5, 5, x * 5 + 1)
+        plt.imshow(images_[x * 5])
+        plt.subplot(5, 5, x * 5 + 2)
+        plt.imshow(images_[x * 5 + 1])
+        plt.subplot(5, 5, x * 5 + 3)
+        plt.imshow(images_[x * 5 + 2])
+        plt.subplot(5, 5, x * 5 + 4)
+        plt.imshow(images_[x * 5 + 3])
+        plt.subplot(5, 5, x * 5 + 5)
+        plt.imshow(images_[x * 5 + 4])
+    plt.show()
 
 
 def main():
@@ -332,57 +363,21 @@ def main():
     # print(data_frame_test['class'].value_counts())
     class_change(data_frame_test)
     # print("learn bovw")
-    # learn_bovw(data_frame_train)
+    learn_bovw(data_frame_train)
     # print("extract features")
     data_frame_train = extract_features(data_frame_train, 'train')
     # print("train")
     rf = train(data_frame_train)
-    print("predict")
+    # print("predict")
     data_frame_test = extract_features(data_frame_test, 'test')
-    # data_frame_test = predict(rf, data_frame_test)
-    # evaluate(data_frame_test)
-    located = localization(data_frame_test.iloc[75:100])
-    located = extract_and_predict_loc(rf, located)
-    print(located)
-    # if input("detect or classify ( repeat ) ") == 'classify':
-    #     classify(rf)
-    # else:
-    #     localization(data_frame_test.iloc[75:100])
+    data_frame_test = predict(rf, data_frame_test)
+    evaluate(data_frame_test)
+
+    if input("detect or classify ( repeat ) ") == 'classify':
+        classify(rf)
+    else:
+        detect(rf, data_frame_test)
 
 
-# data_frame_test = extract_features( data_frame_test, 'test' )
-# data_frame_test = predict(rf, data_frame_test)
-
-if 0:
-    data_frame_train = predict(rf, data_frame_train)
-    evaluate(data_frame_train)
-
-
-# print(data_frame_test[['filename','class','class_pred']].tail(100))
-# for _, row in data_frame_test.iloc[75:100].iterrows():
-
-
-def plot(images):
-    for x in range(5):
-        plt.figure(0)
-        plt.subplot(5, 5, x * 5 + 1)
-        plt.imshow(images[x * 5])
-        plt.subplot(5, 5, x * 5 + 2)
-        plt.imshow(images[x * 5 + 1])
-        plt.subplot(5, 5, x * 5 + 3)
-        plt.imshow(images[x * 5 + 2])
-        plt.subplot(5, 5, x * 5 + 4)
-        plt.imshow(images[x * 5 + 3])
-        plt.subplot(5, 5, x * 5 + 5)
-        plt.imshow(images[x * 5 + 4])
-    plt.show()
-
-
-main()
-plot(images)
-# detect(data_frame_test.iloc[54:79].iterrows())
-# img = cv2.imread(os.path.join(img_test_path, 'road210.png'), cv2.IMREAD_COLOR)
-# img = img[135: 156, 179: 199]
-# plt.figure(1)
-# plt.imshow(img)
-# plt.show()
+if __name__ == '__main__':
+    main()
