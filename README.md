@@ -16,7 +16,7 @@ W celu lokalizacji znaków skorzystałem z algorytmu **Hough'a**, tranformata w 
 
 ## Non maximum supression
 Lokalizacja znaków zwróciła współrzędne prostokątów. Niektóre prostokąty zawierające znak pokrywały się ze sobą, a za pomocą tej techniki wybierany jest obszar ktorego podobieństwo miedzy dwoma zbiorami jest największe, zwany **indeksem Jaccarda**
-![Non maximum supression](https://github.com/macnack/Builder-Panic/blob/master/images/builder_panic.png)
+![Non maximum supression](https://github.com/macnack/projekt-zaliczeniowy/blob/master/images/nms.png)
 
 ## Linki
 Tutorial [Hough Circle Transform](https://docs.opencv.org/4.x/da/d53/tutorial_py_houghcircles.html).
