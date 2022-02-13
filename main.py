@@ -10,14 +10,14 @@ from matplotlib import pyplot as plt
 
 # from sklearn.ensemble import AdaBoostClassifier
 # file paths
-anno_test_path = "./test/annotations/"
-img_test_path = "./test/images/"
+anno_test_path = "../test/annotations/"
+img_test_path = "../test/images/"
 
-anno_train_path = "./train/annotations/"
-img_train_path = "./train/images/"
+anno_train_path = "../train/annotations/"
+img_train_path = "../train/images/"
 
-data_xml_path = Path("./dataset/annotations/")
-data_img_path = Path("./dataset/images/")
+data_xml_path = Path("../dataset/annotations/")
+data_img_path = Path("../dataset/images/")
 
 # factorial of image
 alpha = 1 / 10
@@ -208,7 +208,7 @@ def input_classify():
         filename = input('filename: ')
         number_of_objects = input('number of objects: ')
         for y in range(int(number_of_objects)):
-            bounds = list(map(int, input('bounds').split()))
+            bounds = list(map(int, input('bounds: ').split()))
             tuple_ = ((bounds[0], bounds[2]), (bounds[1], bounds[3]))
             to_do_list.append({'filename': str(filename), 'bounds': tuple_})
     return pd.DataFrame(to_do_list)
@@ -297,7 +297,7 @@ def localization(frame):
                     if Draw:
                         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
                     images.append(img)
-            boxes = non_max_suppression(xmin_[1:, 0], xmax_[1:, 0], ymin_[1:, 0], ymax_[1:, 0])
+                boxes = non_max_suppression(xmin_[1:, 0], xmax_[1:, 0], ymin_[1:, 0], ymax_[1:, 0])
             new_frame.append({'filename': filename, 'find_bounds': boxes})
             output(filename, boxes)
     return pd.DataFrame(new_frame)
