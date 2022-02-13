@@ -7,8 +7,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 import os
 from matplotlib import pyplot as plt
-
 # from sklearn.ensemble import AdaBoostClassifier
+
 # file paths
 anno_test_path = "../test/annotations/"
 img_test_path = "../test/images/"
