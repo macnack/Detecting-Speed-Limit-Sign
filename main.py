@@ -113,6 +113,7 @@ def learn_bovw(frame):
     my_vocabulary = my_bow.cluster()
     np.save('my_voc.npy', my_vocabulary)  # vocabulary
 
+
 # extraxt deskriptor from frame
 def extract_features(frame, path):
     sift = cv2.SIFT_create()
@@ -142,6 +143,7 @@ def extract_features(frame, path):
     frame['desc'] = imageDescriptors
     return frame
 
+
 # train model
 def train(frame):
     # clf = AdaBoostClassifier(n_estimators=100, random_state=0)
@@ -157,6 +159,7 @@ def train(frame):
     clf.fit(x_matrix[1:], y_vec)
     return clf
 
+
 # predict value
 def predict(rf, frame):
     class_predict = []
@@ -168,6 +171,7 @@ def predict(rf, frame):
             class_predict.append(0)
     frame['class_pred'] = class_predict
     return frame
+
 
 # compute accuracy
 def evaluate(frame):
@@ -183,8 +187,9 @@ def output(filename, bounds):
     print(len(bounds))
     if len(bounds) != 0:
         for bound in bounds:
-            print('(', bound[0][0], ',', bound[0][1], ',', bound[1][0], ',', bound[1][1], ')')
+            print(bound[0][0], bound[1][0], bound[0][1], bound[1][1])
     return
+
 
 # output for frame with bounds
 def output_with_box(frame):
@@ -196,7 +201,8 @@ def output_with_box(frame):
         print(sum(class_pred[i]))
         for j in range(len(class_pred[i])):
             if class_pred[i][j] == 1:
-                print(bounds[i][j])
+                ((xmin, ymin), (xmax, ymax)) = bounds[i][j]
+                print(xmin, xmax, ymin, ymax)
     return 1
 
 
@@ -212,6 +218,7 @@ def input_classify():
             tuple_ = ((bounds[0], bounds[2]), (bounds[1], bounds[3]))
             to_do_list.append({'filename': str(filename), 'bounds': tuple_})
     return pd.DataFrame(to_do_list)
+
 
 # NMS algorithm
 def non_max_suppression(x_min, x_max, y_min, y_max):
@@ -237,6 +244,7 @@ def non_max_suppression(x_min, x_max, y_min, y_max):
         boxes.append(box)
     return boxes
 
+
 # used for detection
 def extract_and_predict_loc(rf, frame):
     filename = frame['filename'].to_list()
@@ -260,6 +268,7 @@ def extract_and_predict_loc(rf, frame):
         class_predict.append(class_predict_)
     frame['class_pred'] = class_predict
     return frame
+
 
 # Hough Tranfrom for localize circle in img
 def localization(frame):
@@ -299,7 +308,7 @@ def localization(frame):
                     images.append(img)
                 boxes = non_max_suppression(xmin_[1:, 0], xmax_[1:, 0], ymin_[1:, 0], ymax_[1:, 0])
             new_frame.append({'filename': filename, 'find_bounds': boxes})
-            output(filename, boxes)
+            # output(filename, boxes)
     return pd.DataFrame(new_frame)
 
 
@@ -371,7 +380,7 @@ def main():
     # print("predict")
     data_frame_test = extract_features(data_frame_test, 'test')
     data_frame_test = predict(rf, data_frame_test)
-    evaluate(data_frame_test)
+    # evaluate(data_frame_test)
 
     if input("detect or classify ( repeat ) ") == 'classify':
         classify(rf)
