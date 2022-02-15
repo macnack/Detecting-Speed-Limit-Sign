@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 import os
 from matplotlib import pyplot as plt
+
 # from sklearn.ensemble import AdaBoostClassifier
 
 # file paths
@@ -27,6 +28,19 @@ overlapThresh = 0.3
 images = []
 # draw the box
 Draw = False
+Output = False
+# 'gui'
+if Output is True:
+    welcome_str = 'detect or classify ( repeat )'
+    filename_str = 'filename: '
+    number_files_str = 'number of files: '
+    number_obj_str = 'number of objects: '
+    bounds_str = 'bounds: '
+else:
+    welcome_str = ''
+    filename_str = ''
+    number_files_str = ''
+    number_obj_str = ''
 
 
 # import from xml file....
@@ -209,12 +223,16 @@ def output_with_box(frame):
 # method classify from terminal
 def input_classify():
     to_do_list = []
-    loop = input('number of files: ')
+    # 'number of files: '
+    loop = input(number_files_str)
     for x in range(int(loop)):
-        filename = input('filename: ')
-        number_of_objects = input('number of objects: ')
+        # text 'filename: '
+        filename = input(filename_str)
+        # text 'number of objects: '
+        number_of_objects = input(number_obj_str)
         for y in range(int(number_of_objects)):
-            bounds = list(map(int, input('bounds: ').split()))
+            # text 'bounds: '
+            bounds = list(map(int, input(bounds_str).split()))
             tuple_ = ((bounds[0], bounds[2]), (bounds[1], bounds[3]))
             to_do_list.append({'filename': str(filename), 'bounds': tuple_})
     return pd.DataFrame(to_do_list)
@@ -382,7 +400,8 @@ def main():
     data_frame_test = predict(rf, data_frame_test)
     # evaluate(data_frame_test)
 
-    if input("detect or classify ( repeat ) ") == 'classify':
+    # tekst "detect or classify ( repeat ) "
+    if input(welcome_str) == 'classify':
         classify(rf)
     else:
         detect(rf, data_frame_test)
