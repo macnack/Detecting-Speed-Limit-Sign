@@ -10,6 +10,36 @@ from matplotlib import pyplot as plt
 
 # from sklearn.ensemble import AdaBoostClassifier
 
+# TODO Jakość kodu i raport (4/4)
+
+
+# TODO Skuteczność klasyfikacji 0.0 (0/4)
+# TODO [0.00, 0.50) - 0.0
+# TODO [0.50, 0.55) - 0.5
+# TODO [0.55, 0.60) - 1.0
+# TODO [0.60, 0.65) - 1.5
+# TODO [0.65, 0.70) - 2.0
+# TODO [0.70, 0.75) - 2.5
+# TODO [0.75, 0.80) - 3.0
+# TODO [0.80, 0.85) - 3.5
+# TODO [0.85, 1.00) - 4.0
+
+# stderr:
+# Traceback (most recent call last):
+#   File "main.py", line 429, in <module>
+#     main()
+#   File "main.py", line 423, in main
+#     classify(rf)
+#   File "main.py", line 372, in classify
+#     classify_frame = input_classify()
+#   File "main.py", line 252, in input_classify
+#     bounds = list(map(int, input(bounds_str).split()))
+# NameError: name 'bounds_str' is not defined
+
+# TODO Skuteczność detekcji mAP = 0.0 (0/6) (0/2)
+
+# TODO max(0, 0+0) = 0
+
 # file paths
 anno_test_path = "../test/annotations/"
 img_test_path = "../test/images/"
@@ -41,7 +71,6 @@ else:
     filename_str = ''
     number_files_str = ''
     number_obj_str = ''
-
 
 # import from xml file....
 def make_frame(path):
@@ -93,6 +122,7 @@ def make_input_frame(path):
 
 # classification other and speedlimit (0, 1)
 def class_change(frame):
+    # TODO Przydalyby sie tez przyklady np. tla czy innych obiektow w klasie "other".
     class_new_dict = {'trafficlight': 0, 'speedlimit': 1, 'stop': 0, 'crosswalk': 0}
     frame['class'] = frame['class'].apply(lambda x: class_new_dict[x])
 
@@ -312,6 +342,7 @@ def localization(frame):
                     ymin = np.array(np.uint16(np.around(max(i[1] - i[2], 0))))
                     xmax = np.array(np.uint16(np.around(min(i[0] + i[2], row[1]))))
                     ymax = np.array(np.uint16(np.around(min(i[1] + i[2], row[2]))))
+                    # TODO Tutaj chyba powinno byc "xmax - xmin >= alpha * img.shape[1]".
                     if xmin + xmax >= alpha * img.shape[1] and ymin + ymax >= alpha * img.shape[0]:
                         box = ((xmin, ymin), (xmax, ymax))
                         count += 1
