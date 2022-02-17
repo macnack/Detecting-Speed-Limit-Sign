@@ -123,7 +123,7 @@ def make_input_frame(path):
 # classification other and speedlimit (0, 1)
 def class_change(frame):
     # TODO Przydalyby sie tez przyklady np. tla czy innych obiektow w klasie "other".
-    class_new_dict = {'trafficlight': 0, 'speedlimit': 1, 'stop': 0, 'crosswalk': 0}
+    class_new_dict = {'trafficlight': 0, 'speedlimit': 1, 'stop': 0, 'crosswalk': 0, 'other' : 0, 'background' : 0}
     frame['class'] = frame['class'].apply(lambda x: class_new_dict[x])
 
 
@@ -343,7 +343,7 @@ def localization(frame):
                     xmax = np.array(np.uint16(np.around(min(i[0] + i[2], row[1]))))
                     ymax = np.array(np.uint16(np.around(min(i[1] + i[2], row[2]))))
                     # TODO Tutaj chyba powinno byc "xmax - xmin >= alpha * img.shape[1]".
-                    if xmin + xmax >= alpha * img.shape[1] and ymin + ymax >= alpha * img.shape[0]:
+                    if xmax - xmin >= alpha * img.shape[1] and ymax - ymin >= alpha * img.shape[0]:
                         box = ((xmin, ymin), (xmax, ymax))
                         count += 1
                         boxes.append(box)
