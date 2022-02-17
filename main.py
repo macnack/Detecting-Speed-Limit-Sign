@@ -71,6 +71,7 @@ else:
     filename_str = ''
     number_files_str = ''
     number_obj_str = ''
+    bounds_str = ''
 
 # import from xml file....
 def make_frame(path):
@@ -234,6 +235,17 @@ def output(filename, bounds):
             print(bound[0][0], bound[1][0], bound[0][1], bound[1][1])
     return
 
+# output for frame
+def output_( frame ):
+    filename = frame['filename'].to_list()
+    bounds = frame['find_bounds'].to_list()
+    for i in range(len(filename)):
+        print(filename[i])
+        print(len(bounds[i]))
+        for j in range(len(bounds[i])):
+            ((xmin, ymin), (xmax, ymax)) = bounds[i][j]
+            print(xmin, xmax, ymin, ymax)
+    return 1
 
 # output for frame with bounds
 def output_with_box(frame):
