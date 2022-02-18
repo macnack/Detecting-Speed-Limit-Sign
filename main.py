@@ -73,6 +73,7 @@ else:
     number_obj_str = ''
     bounds_str = ''
 
+
 # import from xml file....
 def make_frame(path):
     items = []
@@ -124,7 +125,7 @@ def make_input_frame(path):
 # classification other and speedlimit (0, 1)
 def class_change(frame):
     # TODO Przydalyby sie tez przyklady np. tla czy innych obiektow w klasie "other".
-    class_new_dict = {'trafficlight': 0, 'speedlimit': 1, 'stop': 0, 'crosswalk': 0, 'other' : 0, 'background' : 0}
+    class_new_dict = {'trafficlight': 0, 'speedlimit': 1, 'stop': 0, 'crosswalk': 0, 'other': 0, 'background': 0}
     frame['class'] = frame['class'].apply(lambda x: class_new_dict[x])
 
 
@@ -235,8 +236,9 @@ def output(filename, bounds):
             print(bound[0][0], bound[1][0], bound[0][1], bound[1][1])
     return
 
+
 # output for frame
-def output_( frame ):
+def output_(frame):
     filename = frame['filename'].to_list()
     bounds = frame['find_bounds'].to_list()
     for i in range(len(filename)):
@@ -246,6 +248,7 @@ def output_( frame ):
             ((xmin, ymin), (xmax, ymax)) = bounds[i][j]
             print(xmin, xmax, ymin, ymax)
     return 1
+
 
 # output for frame with bounds
 def output_with_box(frame):
@@ -342,19 +345,20 @@ def localization(frame):
                                    param1=300, param2=0.85, minRadius=1, maxRadius=100)
         if filename is not row[0]:
             filename = row[0]
-            xmin_ = np.array(0)
-            ymin_ = np.array(0)
-            xmax_ = np.array(0)
-            ymax_ = np.array(0)
+            xmin_ = np.array([0])
+            ymin_ = np.array([0])
+            xmax_ = np.array([0])
+            ymax_ = np.array([0])
             if circles is not None:
                 boxes = []
                 count = 0
                 for i in circles[0, :]:
                     xmin = np.array(np.uint16(np.around(max(i[0] - i[2], 0))))
                     ymin = np.array(np.uint16(np.around(max(i[1] - i[2], 0))))
-                    xmax = np.array(np.uint16(np.around(min(i[0] + i[2], row[1]))))
-                    ymax = np.array(np.uint16(np.around(min(i[1] + i[2], row[2]))))
-                    # TODO Tutaj chyba powinno byc "xmax - xmin >= alpha * img.shape[1]".
+                    xmax = np.array(np.uint16(np.around(min(i[0] + i[2], img.shape[1]))))
+                    ymax = np.array(np.uint16(np.around(min(i[1] + i[2], img.shape[0]))))
+                    ile = alpha * img.shape[1]
+                    # TODO Tutaj chyba powinno byc "xmax - xmin >= alpha * img.shape[1]". - Checked MK
                     if xmax - xmin >= alpha * img.shape[1] and ymax - ymin >= alpha * img.shape[0]:
                         box = ((xmin, ymin), (xmax, ymax))
                         count += 1
@@ -367,7 +371,8 @@ def localization(frame):
                     if Draw:
                         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
                     images.append(img)
-                boxes = non_max_suppression(xmin_[1:, 0], xmax_[1:, 0], ymin_[1:, 0], ymax_[1:, 0])
+                if len(xmin_) != 1:
+                    boxes = non_max_suppression(xmin_[1:, 0], xmax_[1:, 0], ymin_[1:, 0], ymax_[1:, 0])
             new_frame.append({'filename': filename, 'find_bounds': boxes})
             # output(filename, boxes)
     return pd.DataFrame(new_frame)
@@ -375,11 +380,20 @@ def localization(frame):
 
 def output_predict(frame):
     class_predict = frame['class_pred']
-    for item in class_predict:
+    filename = frame['filename'].to_list()
+    class_predict = frame['class_pred'].to_list()
+    for i in range(len(filename)):
+        print(filename[i])
+        item = class_predict[i]
         if item == 1:
             print('speedlimit')
         else:
             print('other')
+    # for item in class_predict:
+    #     if item == 1:
+    #         print('speedlimit')
+    #     else:
+    #         print('other')
     return 1
 
 
@@ -441,7 +455,7 @@ def main():
     # print("predict")
     data_frame_test = extract_features(data_frame_test, 'test')
     data_frame_test = predict(rf, data_frame_test)
-    # evaluate(data_frame_test)
+    evaluate(data_frame_test)
 
     # tekst "detect or classify ( repeat ) "
     if input(welcome_str) == 'classify':
