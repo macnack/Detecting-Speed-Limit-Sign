@@ -419,7 +419,7 @@ def detect(rf, frame):
     located = localization(frame)
     located = extract_and_predict_loc(rf, located)
     output_with_box(located)
-    #output_(located)
+    # output_(located)
 
 
 def plot(images_):
