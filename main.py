@@ -419,6 +419,7 @@ def detect(rf, frame):
     located = localization(frame)
     located = extract_and_predict_loc(rf, located)
     output_with_box(located)
+    #output_(located)
 
 
 def plot(images_):
@@ -455,7 +456,7 @@ def main():
     # print("predict")
     data_frame_test = extract_features(data_frame_test, 'test')
     data_frame_test = predict(rf, data_frame_test)
-    evaluate(data_frame_test)
+    # evaluate(data_frame_test)
 
     # tekst "detect or classify ( repeat ) "
     if input(welcome_str) == 'classify':
