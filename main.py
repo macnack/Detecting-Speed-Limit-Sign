@@ -441,11 +441,11 @@ def plot(images_):
 def main():
     # print("Read train file")
     data_frame_train = make_frame(anno_train_path)
-    # print(data_frame_train['class'].value_counts())
+    print(data_frame_train['class'].value_counts())
     class_change(data_frame_train)
     # print("Read test file")
     data_frame_test = make_frame(anno_test_path)
-    # print(data_frame_test['class'].value_counts())
+    print(data_frame_test['class'].value_counts())
     class_change(data_frame_test)
     # print("learn bovw")
     learn_bovw(data_frame_train)
@@ -454,8 +454,8 @@ def main():
     # print("train")
     rf = train(data_frame_train)
     # print("predict")
-    data_frame_test = extract_features(data_frame_test, 'test')
-    data_frame_test = predict(rf, data_frame_test)
+    #data_frame_test = extract_features(data_frame_test, 'test')
+    #data_frame_test = predict(rf, data_frame_test)
     # evaluate(data_frame_test)
 
     # tekst "detect or classify ( repeat ) "
