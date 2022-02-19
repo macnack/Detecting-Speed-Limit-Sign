@@ -52,8 +52,7 @@ data_img_path = Path("../dataset/images/")
 
 # factorial of image
 alpha = 1 / 10
-# nnm threshold
-overlapThresh = 0.3
+
 # images to show
 images = []
 # draw the box
@@ -85,14 +84,14 @@ def make_frame(path):
                 for name in test.findall("./object"):
                     filename_ = test.find("./filename").text
                     width_ = test.find("./size/width").text
-                    heigh_ = test.find("./size/height").text
+                    height_ = test.find("./size/height").text
                     class_ = name.find("./name").text
                     xmin_ = name.find("./bndbox/xmin").text
                     ymin_ = name.find("./bndbox/ymin").text
                     xmax_ = name.find("./bndbox/xmax").text
                     ymax_ = name.find("./bndbox/ymax").text
                     items.append({'filename': filename_, 'width': int(width_),
-                                  'heigh': int(heigh_), 'class': class_,
+                                  'height': int(height_), 'class': class_,
                                   'xmin': int(xmin_), 'ymin': int(ymin_),
                                   'xmax': int(xmax_), 'ymax': int(ymax_)})
                     # break if turn off repetition
@@ -110,7 +109,7 @@ def make_input_frame(path):
                 for name in test.findall("./object"):
                     filename_ = test.find("./filename").text
                     # width_ = test.find("./size/width").text
-                    # heigh_ = test.find("./size/height").text
+                    # height_ = test.find("./size/height").text
                     class_ = name.find("./name").text
                     xmin_ = name.find("./bndbox/xmin").text
                     ymin_ = name.find("./bndbox/ymin").text
@@ -284,7 +283,7 @@ def input_classify():
 
 
 # NMS algorithm
-def non_max_suppression(x_min, x_max, y_min, y_max):
+def non_max_suppression(x_min, x_max, y_min, y_max, thresh):
     choose = []
     area = (x_max - x_min + 1) * (y_max - y_min + 1)
     index = np.argsort(y_max)
@@ -298,7 +297,7 @@ def non_max_suppression(x_min, x_max, y_min, y_max):
             width = max(0, min(x_max[i], x_max[j]) - max(x_min[i], x_min[j]) + 1)
             height = max(0, min(y_max[i], y_max[j]) - max(y_min[i], y_min[j]) + 1)
             overlap = float(width * height) / area[j]
-            if overlap > overlapThresh:
+            if overlap > thresh:
                 suppression.append(pos)
         index = np.delete(index, suppression)
     boxes = []
@@ -372,7 +371,7 @@ def localization(frame):
                         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
                     images.append(img)
                 if len(xmin_) != 1:
-                    boxes = non_max_suppression(xmin_[1:, 0], xmax_[1:, 0], ymin_[1:, 0], ymax_[1:, 0])
+                    boxes = non_max_suppression(xmin_[1:, 0], xmax_[1:, 0], ymin_[1:, 0], ymax_[1:, 0], 0.3)
             new_frame.append({'filename': filename, 'find_bounds': boxes})
             # output(filename, boxes)
     return pd.DataFrame(new_frame)
@@ -438,10 +437,47 @@ def plot(images_):
     plt.show()
 
 
+def add_random_background(frame):
+    # one row for one object, get random file
+    duplicate_index = frame.duplicated(subset=['filename'], keep='first')
+    no_duplicate = frame[~duplicate_index]
+    # how many examples of backgroud?
+    n_examples = len(frame.loc[frame['class'] == 'speedlimit']) - len(frame.loc[frame['class'] != 'speedlimit'])
+    if n_examples > 0:
+        i = 0
+        while n_examples:
+            file = no_duplicate.sample()
+            keyname = frame['filename'] == file['filename'].values[0]
+            keyclass = frame['class'] == 'speedlimit'
+            R = len(frame.loc[keyname & keyclass])
+            width = np.random.randint(np.round(alpha * file['width'].values[0]), file['width'].values[0] + 1)
+            height = np.random.randint(np.round(alpha * file['height'].values[0]), file['height'].values[0] + 1)
+            start_X = np.random.randint(0, file['width'].values[0] - width + 1)
+            start_Y = np.random.randint(0, file['height'].values[0] - height + 1)
+            xmax = np.vstack((frame['xmax'].loc[keyname & keyclass].values.reshape((R, 1)), np.array(start_X + width)))
+            ymax = np.vstack((frame['ymax'].loc[keyname & keyclass].values.reshape((R, 1)), np.array(start_Y + height)))
+            xmin = np.vstack((frame['xmin'].loc[keyname & keyclass].values.reshape((R, 1)), np.array(start_X)))
+            ymin = np.vstack((frame['ymin'].loc[keyname & keyclass].values.reshape((R, 1)), np.array(start_Y)))
+            boxes = non_max_suppression(xmin[:, 0], xmax[:, 0], ymin[:, 0], ymax[:, 0], 0.5)
+            if len(boxes) > R:
+                frame = frame.append({'filename': file['filename'].values[0], 'width': file['width'].values[0],
+                                      'height': file['height'].values[0], 'class': 'other',
+                                      'xmin': start_X, 'ymin': start_Y,
+                                      'xmax': start_X + width, 'ymax': start_Y + height}, ignore_index=True)
+                n_examples -= 1
+            i += 1
+            # print((frame['xmax'].loc[frame['filename'] == file['filename'].values[0]]).values)
+    else:
+        return frame
+    return frame
+    # random_20 = frame.sample(int(len(files) * 0.2))
+
+
 def main():
     # print("Read train file")
     data_frame_train = make_frame(anno_train_path)
     print(data_frame_train['class'].value_counts())
+    data_frame_train = add_random_background(data_frame_train)
     class_change(data_frame_train)
     # print("Read test file")
     data_frame_test = make_frame(anno_test_path)
@@ -454,9 +490,9 @@ def main():
     # print("train")
     rf = train(data_frame_train)
     # print("predict")
-    #data_frame_test = extract_features(data_frame_test, 'test')
-    #data_frame_test = predict(rf, data_frame_test)
-    # evaluate(data_frame_test)
+    data_frame_test = extract_features(data_frame_test, 'test')
+    data_frame_test = predict(rf, data_frame_test)
+    evaluate(data_frame_test)
 
     # tekst "detect or classify ( repeat ) "
     if input(welcome_str) == 'classify':
