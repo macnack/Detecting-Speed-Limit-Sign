@@ -52,7 +52,8 @@ data_img_path = Path("../dataset/images/")
 
 # factorial of image
 alpha = 1 / 10
-
+# % of background
+background = 1/10
 # images to show
 images = []
 # draw the box
@@ -442,7 +443,7 @@ def add_random_background(frame):
     no_duplicate = frame[~duplicate_index]
     n_examples = len(frame.loc[frame['class'] == 'speedlimit']) - len(frame.loc[frame['class'] != 'speedlimit'])
     if n_examples < 0:
-        n_examples = np.round(len(frame) * 1/100)
+        n_examples = np.round(len(frame.loc[frame['class'] == 'speedlimit']) * background)
     if n_examples > 0:
         while n_examples:
             file = no_duplicate.sample()
