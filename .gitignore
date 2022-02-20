@@ -2,3 +2,4 @@
 my_voc.npy
 .DS_Store
 input.txt
+*.txt

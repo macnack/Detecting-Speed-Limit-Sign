@@ -382,7 +382,6 @@ def output_predict(frame):
     filename = frame['filename'].to_list()
     class_predict = frame['class_pred'].to_list()
     for i in range(len(filename)):
-        print(filename[i])
         item = class_predict[i]
         if item == 1:
             print('speedlimit')
@@ -441,10 +440,10 @@ def add_random_background(frame):
     # one row for one object, get random file
     duplicate_index = frame.duplicated(subset=['filename'], keep='first')
     no_duplicate = frame[~duplicate_index]
-    # how many examples of backgroud?
     n_examples = len(frame.loc[frame['class'] == 'speedlimit']) - len(frame.loc[frame['class'] != 'speedlimit'])
+    if n_examples < 0:
+        n_examples = np.round(len(frame) * 1/100)
     if n_examples > 0:
-        i = 0
         while n_examples:
             file = no_duplicate.sample()
             keyname = frame['filename'] == file['filename'].values[0]
@@ -465,23 +464,26 @@ def add_random_background(frame):
                                       'xmin': start_X, 'ymin': start_Y,
                                       'xmax': start_X + width, 'ymax': start_Y + height}, ignore_index=True)
                 n_examples -= 1
-            i += 1
-            # print((frame['xmax'].loc[frame['filename'] == file['filename'].values[0]]).values)
-    else:
-        return frame
     return frame
-    # random_20 = frame.sample(int(len(files) * 0.2))
+
+
+def skip_small_objects(frame):
+    # skip speedlimit signs smaller than 1/10 of the image
+    part1 = frame.loc[frame['xmax'] - frame['xmin'] >= alpha * frame['width']].loc[
+        frame['ymax'] - frame['ymin'] >= alpha * frame['height']].loc[frame['class'] == 'speedlimit']
+    part2 = frame.loc[frame['class'] != 'speedlimit']
+    return part1.append(part2)
 
 
 def main():
     # print("Read train file")
     data_frame_train = make_frame(anno_train_path)
-    #print(data_frame_train['class'].value_counts())
+    data_frame_train = skip_small_objects(data_frame_train)
     data_frame_train = add_random_background(data_frame_train)
     class_change(data_frame_train)
     # print("Read test file")
     data_frame_test = make_frame(anno_test_path)
-    #print(data_frame_test['class'].value_counts())
+    # print(data_frame_test['class'].value_counts())
     class_change(data_frame_test)
     # print("learn bovw")
     learn_bovw(data_frame_train)
@@ -490,9 +492,9 @@ def main():
     # print("train")
     rf = train(data_frame_train)
     # print("predict")
-    #data_frame_test = extract_features(data_frame_test, 'test')
-    #data_frame_test = predict(rf, data_frame_test)
-    #evaluate(data_frame_test)
+    # data_frame_test = extract_features(data_frame_test, 'test')
+    # data_frame_test = predict(rf, data_frame_test)
+    # evaluate(data_frame_test)
 
     # tekst "detect or classify ( repeat ) "
     if input(welcome_str) == 'classify':
